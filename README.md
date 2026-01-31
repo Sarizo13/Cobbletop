@@ -1,18 +1,19 @@
 # CobbleTop (v1.4.0)
 
-CobbleTop ajoute des placeholders TextPlaceholderAPI pour afficher des tops (Top 10 Shinies / Top 10 Dex) basés sur les stats du monde. [file:583]
+CobbleTop ajoute des placeholders TextPlaceholderAPI pour afficher des tops (Top 10 Shinies / Top 10 Dex) basés sur les stats du monde.
 
 ## Installation
 - Installer Fabric + Fabric API
 - Installer Text Placeholder API (pb4)
+- Installer HoloDisplays
 - Installer LuckPerms (optionnel mais recommandé pour les préfix)
 - Mettre le jar CobbleTop dans `/mods`
 - Redémarrer le serveur
 
 ## Configuration
-Un fichier est créé automatiquement au premier lancement : [file:583]
+Un fichier est créé automatiquement au premier lancement :
 
-`config/cobbletop/cobbletop.yml` [file:583]
+`config/cobbletop/cobbletop.yml`
 
 Options utiles :
 - `refreshSeconds`: fréquence de recalcul (min 5s)
@@ -34,22 +35,23 @@ Tokens disponibles (formats de lignes) :
 - `{pos}`: position du joueur (toi)
 
 ## Placeholders
-CobbleTop expose uniquement 2 placeholders “tout-en-un” (multi-lignes via `\n`) : [file:583]
+CobbleTop expose uniquement 2 placeholders “tout-en-un” (multi-lignes via `\n`) :
 
-- `%cobbletop:shinies_all%` : titre + top 10 shinies + séparation + label + ta ligne (“toi”) [file:583]
-- `%cobbletop:dex_all%` : titre + top 10 dex + séparation + label + ta ligne (“toi”) [file:583]
+- `%cobbletop:shinies_all%` : titre + top 10 shinies + séparation + label + ta ligne (“toi”)
+- `%cobbletop:dex_all%` : titre + top 10 dex + séparation + label + ta ligne (“toi”)
 
-Note : la dernière ligne correspond à ton joueur (si le placeholder est évalué dans un contexte joueur). [file:583]
+Note : la dernière ligne correspond à ton joueur (si le placeholder est évalué dans un contexte joueur).
 
 ## Commande
-- `/cobbletop reload` : recharge `config/cobbletop/cobbletop.yml` [file:583]
+- `/cobbletop reload` : recharge `config/cobbletop/cobbletop.yml`
 
 ## Exemple (HoloDisplays)
-Tu peux afficher le panneau complet (multi-lignes) dans un hologramme HoloDisplays : [file:583]
+Tu peux afficher le panneau complet (multi-lignes) dans un hologramme HoloDisplays :
 
-- Shinies : `%cobbletop:shinies_all%` [file:583]
-- Dex : `%cobbletop:dex_all%` [file:583]
+- Shinies : `%cobbletop:shinies_all%`
+- Dex : `%cobbletop:dex_all%`
 
 Exemple (extrait) :
-text: "%cobbletop:shinies_all%" [file:583]
+text: "%cobbletop:shinies_all%"
 
+<img width="1216" height="488" alt="image_2026-02-01_003101323" src="https://github.com/user-attachments/assets/8c9ac345-3bea-48ff-9bd8-b0938dacfbb7" />

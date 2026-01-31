@@ -121,7 +121,8 @@ public class CobbleTopConfig {
         return (v == null) ? def : String.valueOf(v);
     }
 
-    public String footerSeparator = "<dark_gray>────────────────────────────</dark_gray>";
+    public String headerSeparator = "<dark_gray>──────────────────────</dark_gray>";
+    public String footerSeparator = "<dark_gray>──────────────────────</dark_gray>";
     public String footerLabel = "<gray>Dernière ligne :</gray> <yellow>toi</yellow>";
 
 }

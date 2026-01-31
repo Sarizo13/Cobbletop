@@ -506,6 +506,9 @@ public class CobbleTopMod implements ModInitializer {
         // Titre
         sb.append(phTitle(ctx, board));
 
+        // Séparation du haut
+        sb.append("\n").append(cfg.headerSeparator);
+
         // Top 10
         for (int i = 1; i <= 10; i++) {
             sb.append("\n").append(lineFor(ctx, board, i));
