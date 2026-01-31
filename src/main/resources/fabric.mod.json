@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "cobbletop",
+  "version": "${version}",
+  "name": "CobbleTop",
+  "description": "Top 10 Cobblemon stats placeholders for HoloDisplays",
+  "authors": ["Sarizo"],
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.example.cobbletop.CobbleTopMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "1.21.1"
+  }
+}
