@@ -6,6 +6,7 @@ import eu.pb4.placeholders.api.PlaceholderResult;
 import eu.pb4.placeholders.api.Placeholders;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
@@ -14,6 +15,7 @@ import net.luckperms.api.event.user.UserDataRecalculateEvent;
 import net.luckperms.api.model.user.User;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
@@ -30,17 +32,19 @@ public class CobbleTopMod implements ModInitializer {
 
     private static final String WORLD_FOLDER = "world";
     private static final String KEY_SHINIES = "cobblemon:shinies_captured";
-    private static final String KEY_DEX = "cobblemon:dex_entries";
+    private static final String KEY_CAPTURED = "cobblemon:captured";
+    private static final String KEY_EVOLVED = "cobblemon:evolved";
 
     private static final long MIN_FORCE_REFRESH_INTERVAL_MS = 500;
+    private static final long AUTO_REFRESH_EVERY_MS = 30_000; // 30s auto refresh
 
     private final AtomicReference<Cache> cacheRef = new AtomicReference<>(Cache.empty());
     private final Map<UUID, String> prefixCache = new ConcurrentHashMap<>();
 
     private volatile long forceRefreshAtMs = 0;
     private final AtomicLong lastForceRefreshMs = new AtomicLong(0);
+    private final AtomicLong lastAutoRefreshMs = new AtomicLong(0);
 
-    // IMPORTANT: jamais null
     private volatile CobbleTopConfig config = new CobbleTopConfig();
 
     private volatile Duration refreshEvery = Duration.ofSeconds(60);
@@ -48,26 +52,46 @@ public class CobbleTopMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        // /config/cobbletop/cobbletop.yml
         this.configFile = FabricLoader.getInstance()
                 .getConfigDir()
                 .resolve("cobbletop")
-                .resolve("cobbletop.yml"); // getConfigDir() -> dossier config [web:507][web:501]
+                .resolve("cobbletop.yml");
 
-        // Charge la config (ou crée le fichier), mais ne doit jamais rendre config null
         boolean ok = reloadConfigInternal(false);
         if (!ok) {
-            // fallback: on garde les defaults (config déjà initialisée)
             System.err.println("[CobbleTop] Failed to load config, using defaults. Check console for details.");
         }
 
         registerPlaceholders();
         registerCommands();
         hookLuckPermsEvents();
+        hookAutoRefresh();
+    }
+
+    private void hookAutoRefresh() {
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            long now = System.currentTimeMillis();
+            long last = lastAutoRefreshMs.get();
+            if (now - last >= AUTO_REFRESH_EVERY_MS) {
+                if (lastAutoRefreshMs.compareAndSet(last, now)) {
+                    requestForceRefresh();
+                    forceAllPlayerStatsSave(server); // Force save stats
+                }
+            }
+        });
+    }
+
+    private void forceAllPlayerStatsSave(MinecraftServer server) {
+        try {
+            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                player.getStatHandler().save();            // écrit le JSON dans world/stats [web:40]
+                player.getStatHandler().sendStats(player); // envoie au client (optionnel) [web:40]
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private void registerPlaceholders() {
-        // all-in-one (multilines \n)
         Placeholders.register(id("cobbletop", "shinies_all"),
                 (ctx, arg) -> PlaceholderResult.value(allBoard(ctx, Board.SHINIES)));
 
@@ -91,10 +115,9 @@ public class CobbleTopMod implements ModInitializer {
                             })
                     )
             );
-        }); // v2 signature dispatcher, registryAccess, environment [web:531]
+        });
     }
 
-    // Reload safe: ne met JAMAIS this.config à null, et n'applique que si OK
     private boolean reloadConfigInternal(boolean forceRefresh) {
         try {
             CobbleTopConfig newCfg = CobbleTopConfig.loadOrCreate(configFile);
@@ -123,7 +146,7 @@ public class CobbleTopMod implements ModInitializer {
 
     private String phTitle(PlaceholderContext ctx, Board board) {
         refreshIfNeeded(ctx);
-        CobbleTopConfig cfg = this.config; // non-null
+        CobbleTopConfig cfg = this.config;
         return (board == Board.SHINIES) ? cfg.titleShinies : cfg.titleDex;
     }
 
@@ -134,7 +157,7 @@ public class CobbleTopMod implements ModInitializer {
 
         String rankText = "#" + pad2(rank1);
 
-        CobbleTopConfig cfg = this.config; // non-null
+        CobbleTopConfig cfg = this.config;
 
         if (rank1 - 1 < 0 || rank1 - 1 >= list.size()) {
             return applyFormat(cfg.emptyLineFormat, Map.of(
@@ -171,7 +194,7 @@ public class CobbleTopMod implements ModInitializer {
     private String meLine(PlaceholderContext ctx, Board board) {
         refreshIfNeeded(ctx);
 
-        CobbleTopConfig cfg = this.config; // non-null
+        CobbleTopConfig cfg = this.config;
 
         if (ctx.player() == null) {
             return "<dark_gray>Toi</dark_gray> <dark_gray>┃</dark_gray> <gray>-</gray>";
@@ -191,7 +214,7 @@ public class CobbleTopMod implements ModInitializer {
             }
         }
 
-        if (pos == -1 || mine == null) {
+        if (mine == null) {
             return "<dark_gray>Toi</dark_gray> <dark_gray>┃</dark_gray> <gray>-</gray>";
         }
 
@@ -263,8 +286,13 @@ public class CobbleTopMod implements ModInitializer {
                 JsonObject custom = stats.has("minecraft:custom") ? stats.getAsJsonObject("minecraft:custom") : null;
                 if (custom == null) continue;
 
+                // SHINIES
                 int vShinies = getInt(custom, KEY_SHINIES);
-                int vDex = getInt(custom, KEY_DEX);
+
+                // DEX: captured + evolved + shinies + 1 (starter)
+                int vCaptured = getInt(custom, KEY_CAPTURED);
+                int vEvolved = getInt(custom, KEY_EVOLVED);
+                int vDex = vCaptured + vEvolved + vShinies + 1;
 
                 String baseName = names.getOrDefault(uuid, shortUuid(uuid));
 
@@ -273,14 +301,16 @@ public class CobbleTopMod implements ModInitializer {
                 String prefix = prefixCache.getOrDefault(uuid, "");
                 String displayName = prefix + "<white>" + baseName + "</white>";
 
-                if (vShinies > 0) shinies.add(new Entry(uuid, displayName, baseName, vShinies));
-                if (vDex > 0) dex.add(new Entry(uuid, displayName, baseName, vDex));
+                // INCLUDE ALL PLAYERS
+                if (vShinies >= 0) shinies.add(new Entry(uuid, displayName, baseName, vShinies));
+                if (vDex >= 0) dex.add(new Entry(uuid, displayName, baseName, vDex));
             }
         }
 
         shinies.sort(Comparator.comparingInt((Entry e) -> e.value).reversed().thenComparing(e -> e.plainName));
         dex.sort(Comparator.comparingInt((Entry e) -> e.value).reversed().thenComparing(e -> e.plainName));
 
+        // TOP 10 ONLY
         List<Entry> topShinies = shinies.subList(0, Math.min(10, shinies.size()));
         List<Entry> topDex = dex.subList(0, Math.min(10, dex.size()));
 
@@ -527,5 +557,4 @@ public class CobbleTopMod implements ModInitializer {
 
         return sb.toString();
     }
-
 }
