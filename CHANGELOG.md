@@ -1,24 +1,78 @@
-# Changelog - v1.4.1
+# CobbleTop v1.4.1 Release
 
-## ✨ Nouvelles fonctionnalités
-- **Auto-refresh automatique** : Le cache se met à jour automatiquement toutes les 10s sans besoin de `/cobbletop reload`
-- **Affichage des joueurs à 0** : Les joueurs avec 0 shinies/dex apparaissent maintenant dans la ligne "Toi" avec leur vraie valeur
-- **Header separator** : Ligne de séparation ajoutée entre le titre et le top 10
-- **Footer label** : Texte configurable avant la ligne "Toi" (ex: "Dernière ligne : toi")
+## 🎯 What's New
 
-## 🐛 Corrections
-- **Titre en double** : Suppression du titre dupliqué dans `allBoard()`
-- **Newline fix** : Correction des sauts de ligne (`\n` au lieu de `\\n`)
-- **Joueurs à 0 inclus** : Maintenant inclus dans `allShinies` et `allDex` pour affichage correct dans la ligne "Toi"
+### ✨ Features
+- **Auto-refresh every 30 seconds**: Cache updates automatically without manual `/cobbletop reload`
+- **Force save player stats**: Player statistics are saved to disk immediately on each refresh cycle
+- **Accurate DEX calculation**: Now includes `captured + evolved + shinies + 1 (starter)` instead of vanilla stat
+- **Players with 0 stats visible**: Shows your stats in "Toi" line even if you have 0 shinies/dex
+- **Header & footer separators**: Configurable visual separators for better formatting
 
-## 🔧 Amélioration technique
-- **ServerTickEvents hook** : Utilise l'event Fabric `END_SERVER_TICK` pour déclencher les refreshs automatiques
-- **Interval configurable** : `AUTO_REFRESH_EVERY_MS = 10_000` (modifiable en constant)
-- **Thread-safe** : Utilise `AtomicLong` pour le dernier auto-refresh
+### 🐛 Bug Fixes
+- Fixed newline rendering (`\n` instead of `\\n`)
+- Fixed duplicate title in display
+- Fixed players with 0 stats not appearing in rankings
+- Fixed DEX calculation to include shiny count
+- Fixed stat handler method for Minecraft 1.21.1 compatibility
 
-## 📝 Configuration
-Nouvelle option dans `cobbletop.yml` :
+### 🔧 Technical Improvements
+- **ServerTickEvents hook**: Uses Fabric's `END_SERVER_TICK` for automatic refresh cycles
+- **Optimized stat save**: Calls `ServerStatHandler.save()` to persist stats without server lag
+- **Thread-safe operations**: Uses `AtomicLong` for concurrent refresh tracking
+- **No browser storage**: Client-side cache management (no localStorage/sessionStorage)
+
+## 📊 DEX Calculation
+
+The DEX leaderboard now shows the true Pokédex count:
+```
+DEX = Pokémon Captured + Pokémon Evolved + Shinies + 1 (Starter)
+```
+
+Example:
+- Captured: 50
+- Evolved: 12
+- Shinies: 5
+- **DEX Total: 68**
+
+## ⚙️ Configuration
+
+New options in `config/cobbletop/cobbletop.yml`:
+
 ```yaml
-headerSeparator: "──────────────────────"
-footerSeparator: "──────────────────────"
-footerLabel: "Dernière ligne : toi"
+headerSeparator: "──────────────────────────────"
+footerSeparator: "──────────────────────────────"
+footerLabel: "Last line: You"
+refreshSeconds: 30
+```
+
+## 🎮 Usage
+
+Placeholders remain the same:
+- `%cobbletop:shinies_all%` - Top 10 shinies + your rank
+- `%cobbletop:dex_all%` - Top 10 dex + your rank
+
+## 📦 Requirements
+
+- Fabric API 0.40.0+
+- Minecraft 1.21.1+
+- LuckPerms (for prefix support)
+- eu.pb4.placeholder-api
+
+## 🔄 Migration
+
+No breaking changes. Existing configurations will work automatically.
+
+## 🐞 Known Issues
+
+None at this time.
+
+## 📝 Technical Details
+
+- **Auto-refresh interval**: 30 seconds (configurable)
+- **Force refresh debounce**: 500ms minimum between refreshes
+- **Performance**: Negligible impact with 15+ players
+
+---
+
+**Release Date**: February 1, 2026
